@@ -8,7 +8,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <sys/stat.h>
 #include <openssl/x509.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -23,7 +22,7 @@
 typedef struct Filectx Filectx;
 struct Filectx {
 	uint8_t eocd[22];
-	uint32_t cdoff, cdsize, sblkoff, sblksize, filesize;
+	uint32_t cdoff, cdsize, sblkoff, sblksize;
 	int fd;
 };
 
@@ -277,7 +276,7 @@ parsesigner(Filectx *file, X509 *trusted, uint8_t *p, uint8_t *e, int *found)
 	if(certpk == NULL)
 		goto err;
 	p += n;
-	errstr = "broken extensionsa";
+	errstr = "broken extensions";
 	if(p+4+GET32(p) > e)
 		goto err;
 
@@ -357,7 +356,6 @@ const char *
 verifyapk(const char *filename, X509 *trusted)
 {
 	Filectx file;
-	struct stat st;
 	const char *errstr;
 	uint8_t buf[32768];
 	off_t eocdoff;
@@ -409,10 +407,6 @@ verifyapk(const char *filename, X509 *trusted)
 	PUT32(file.eocd+16, file.sblkoff); /* for the digest, see the spec */
 	if(read(file.fd, buf, file.sblksize) != file.sblksize)
 		goto ferr;
-
-	if(fstat(file.fd, &st) != 0)
-		goto ferr;
-	file.filesize = st.st_size;
 
 	errstr = parsesignblk(&file, trusted, buf);
 	goto err;
